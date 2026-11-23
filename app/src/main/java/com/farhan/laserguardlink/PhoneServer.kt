@@ -59,7 +59,7 @@ class PhoneServer(
         try {
             socket.soTimeout = 5000
             val input = socket.getInputStream().buffered()
-            val reader = input.reader(Charsets.US_ASCII)
+            val reader = input.bufferedReader(Charsets.US_ASCII)
             val requestLine = reader.readLine() ?: return closeQuietly(socket)
             val parts = requestLine.split(' ')
             val method = parts.getOrNull(0) ?: ""
