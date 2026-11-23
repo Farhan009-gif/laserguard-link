@@ -180,6 +180,7 @@ class MainActivity : ComponentActivity() {
         val bound by link.bound.collectAsState()
         val status by link.status.collectAsState()
         val linkError by link.error.collectAsState()
+        val phoneIp by link.phoneIp.collectAsState()
         val entries by log.entries.collectAsState()
         val beam by beamPush.collectAsState()
         val breachAt by breachTick.collectAsState()
@@ -243,6 +244,9 @@ class MainActivity : ComponentActivity() {
                     linkError?.let {
                         Text(it, color = AlarmRed, style = MaterialTheme.typography.bodySmall)
                     }
+                    StatusRow("Board", "192.168.4.1 · port 80")
+                    StatusRow("This phone",
+                        if (phoneIp != null) "$phoneIp · port 8080" else "— · port 8080")
                     Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                         if (bound) {
                             OutlinedButton(onClick = { link.disconnect() }) { Text("Disconnect") }
@@ -406,7 +410,7 @@ class MainActivity : ComponentActivity() {
             }
 
             Spacer(Modifier.height(8.dp))
-            Text("Board: ${BoardLink.BOARD_BASE} · This phone (board expects): 192.168.4.2:8080",
+            Text("Board expects this phone at 192.168.4.2:8080 — the live address above should match.",
                 color = Muted, style = MaterialTheme.typography.labelSmall)
         }
     }

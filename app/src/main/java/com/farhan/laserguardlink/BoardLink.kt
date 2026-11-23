@@ -53,6 +53,8 @@ class BoardLink(context: Context) {
     val bound = MutableStateFlow(false)
     val status = MutableStateFlow<BoardStatus?>(null)
     val error = MutableStateFlow<String?>(null)
+    /** This phone's live IP on the board's network (null while unbound). */
+    val phoneIp = MutableStateFlow<String?>(null)
 
     private val cm = context.getSystemService(ConnectivityManager::class.java)
     private var network: Network? = null
@@ -76,6 +78,7 @@ class BoardLink(context: Context) {
                 network = n
                 bound.value = true
                 error.value = null
+                phoneIp.value = localIp(n)
             }
 
             override fun onLost(n: Network) {
@@ -83,6 +86,7 @@ class BoardLink(context: Context) {
                     network = null
                     bound.value = false
                     status.value = null
+                    phoneIp.value = null
                 }
             }
 
@@ -112,6 +116,16 @@ class BoardLink(context: Context) {
         network = null
         bound.value = false
         status.value = null
+        phoneIp.value = null
+    }
+
+    /** The phone's own IPv4 address on the bound (board) network. */
+    private fun localIp(n: Network): String? = try {
+        cm.getLinkProperties(n)?.linkAddresses
+            ?.firstOrNull { it.address is java.net.Inet4Address }
+            ?.address?.hostAddress
+    } catch (e: Exception) {
+        null
     }
 
     /** One GET to the board, through the bound board network only. */
@@ -136,6 +150,7 @@ class BoardLink(context: Context) {
 
     /** Poll GET / and update [status]. Returns true if the board answered. */
     suspend fun refreshStatus(): Boolean {
+        network?.let { phoneIp.value = localIp(it) }
         val r = call("/") ?: return false
         if (r.code != 200) return false
         return try {
