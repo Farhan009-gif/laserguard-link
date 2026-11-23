@@ -18,8 +18,23 @@ import kotlin.coroutines.resume
 class VoiceMaker(context: Context) {
 
     private val ready = CompletableDeferred<Boolean>()
+    @Volatile private var ttsReady = false
     private val tts = TextToSpeech(context.applicationContext) { status ->
-        ready.complete(status == TextToSpeech.SUCCESS)
+        ttsReady = status == TextToSpeech.SUCCESS
+        ready.complete(ttsReady)
+    }
+
+    /**
+     * Speak [text] out loud on the phone right now, on the alarm
+     * stream so it is heard like an alert. Used when the board posts
+     * a breach: the phone itself says the beam is broken.
+     */
+    fun speakNow(text: String) {
+        if (!ttsReady) return
+        val params = Bundle().apply {
+            putInt(TextToSpeech.Engine.KEY_PARAM_STREAM, android.media.AudioManager.STREAM_ALARM)
+        }
+        runCatching { tts.speak(text, TextToSpeech.QUEUE_FLUSH, params, "lg-alert") }
     }
 
     suspend fun synthesize(text: String, outFile: File): Boolean {

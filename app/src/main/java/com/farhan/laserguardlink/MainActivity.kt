@@ -117,6 +117,7 @@ class MainActivity : ComponentActivity() {
                 log.add("BREACH — alarm triggered on the board")
                 breachTick.value = System.currentTimeMillis()
                 notifyBreach()
+                voiceMaker.speakNow("The beam is broken")
             },
             onBeam = { intact ->
                 beamPush.value = intact
