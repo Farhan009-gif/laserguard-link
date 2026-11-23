@@ -83,18 +83,30 @@ class BoardLink(context: Context) {
         null
     }
 
+    /**
+     * Adopt the board's network if the phone is already on it (via
+     * system Wi-Fi). Returns true when adopted. Called from Connect
+     * and automatically whenever the app comes to the foreground, so
+     * the card shows Connected by itself — no tap needed.
+     */
+    fun tryAdopt(): Boolean {
+        findBoardNetwork()?.let { n ->
+            network = n
+            systemMode = true
+            bound.value = true
+            error.value = null
+            phoneIp.value = localIp(n)
+            return true
+        }
+        return false
+    }
+
     /** Ask Android to join the board's AP and pin our traffic to it. */
     fun connect() {
         error.value = null
         // Already on the board's Wi-Fi via system Settings? Adopt that
         // network — no join dialog exists in that state.
-        findBoardNetwork()?.let { n ->
-            network = n
-            systemMode = true
-            bound.value = true
-            phoneIp.value = localIp(n)
-            return
-        }
+        if (tryAdopt()) return
         if (callback != null) return
         val specifier = WifiNetworkSpecifier.Builder()
             .setSsid(AP_SSID)

@@ -131,6 +131,13 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    override fun onResume() {
+        super.onResume()
+        // Show Connected by itself when the phone is on the board's
+        // Wi-Fi — no Connect tap needed.
+        if (!link.bound.value) link.tryAdopt()
+    }
+
     override fun onDestroy() {
         server?.stop()
         voiceMaker.shutdown()
