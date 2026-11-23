@@ -89,7 +89,20 @@ class MainActivity : ComponentActivity() {
 
     private val permissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
-    ) { link.connect() }
+    ) { results ->
+        // Only connect when the Wi-Fi permission was actually granted.
+        // Connecting without it makes requestNetwork throw and crash.
+        val wifiPerm = if (Build.VERSION.SDK_INT >= 33)
+            Manifest.permission.NEARBY_WIFI_DEVICES
+        else
+            Manifest.permission.ACCESS_FINE_LOCATION
+        if (results[wifiPerm] == false) {
+            link.error.value =
+                "That permission is needed to join the board's Wi-Fi. Tap Connect and allow it."
+        } else {
+            link.connect()
+        }
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -130,8 +143,8 @@ class MainActivity : ComponentActivity() {
             checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED
         ) needed += Manifest.permission.ACCESS_FINE_LOCATION
         if (Build.VERSION.SDK_INT >= 33 &&
-            checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
-        ) needed += Manifest.permission.POST_NOTIFICATIONS
+            checkSelfPermission(Manifest.permission.NEARBY_WIFI_DEVICES) != PackageManager.PERMISSION_GRANTED
+        ) needed += Manifest.permission.NEARBY_WIFI_DEVICES
         if (needed.isEmpty()) link.connect() else permissionLauncher.launch(needed.toTypedArray())
     }
 
@@ -166,6 +179,7 @@ class MainActivity : ComponentActivity() {
         val scope = rememberCoroutineScope()
         val bound by link.bound.collectAsState()
         val status by link.status.collectAsState()
+        val linkError by link.error.collectAsState()
         val entries by log.entries.collectAsState()
         val beam by beamPush.collectAsState()
         val breachAt by breachTick.collectAsState()
@@ -226,6 +240,9 @@ class MainActivity : ComponentActivity() {
                         else "Android will ask you to approve joining the board's Wi-Fi. " +
                             "That approval is what lets the app reach 192.168.4.1.",
                         color = Muted, style = MaterialTheme.typography.bodySmall)
+                    linkError?.let {
+                        Text(it, color = AlarmRed, style = MaterialTheme.typography.bodySmall)
+                    }
                     Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                         if (bound) {
                             OutlinedButton(onClick = { link.disconnect() }) { Text("Disconnect") }

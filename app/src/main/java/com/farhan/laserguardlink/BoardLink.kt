@@ -52,6 +52,7 @@ class BoardLink(context: Context) {
 
     val bound = MutableStateFlow(false)
     val status = MutableStateFlow<BoardStatus?>(null)
+    val error = MutableStateFlow<String?>(null)
 
     private val cm = context.getSystemService(ConnectivityManager::class.java)
     private var network: Network? = null
@@ -60,6 +61,7 @@ class BoardLink(context: Context) {
     /** Ask Android to join the board's AP and pin our traffic to it. */
     fun connect() {
         if (callback != null) return
+        error.value = null
         val specifier = WifiNetworkSpecifier.Builder()
             .setSsid(AP_SSID)
             .setWpa2Passphrase(AP_PASSWORD)
@@ -73,6 +75,7 @@ class BoardLink(context: Context) {
             override fun onAvailable(n: Network) {
                 network = n
                 bound.value = true
+                error.value = null
             }
 
             override fun onLost(n: Network) {
@@ -89,10 +92,18 @@ class BoardLink(context: Context) {
                 runCatching { cm.unregisterNetworkCallback(this) }
                 if (callback === this) callback = null
                 bound.value = false
+                error.value = "The board's Wi-Fi join was not approved. Tap Connect and allow it."
             }
         }
         callback = cb
-        cm.requestNetwork(request, cb)
+        try {
+            cm.requestNetwork(request, cb)
+        } catch (e: Exception) {
+            // Missing permission (e.g. location denied) makes
+            // requestNetwork throw SecurityException — never crash.
+            callback = null
+            error.value = "Could not ask for the board's Wi-Fi: ${e.message ?: "permission missing"}"
+        }
     }
 
     fun disconnect() {

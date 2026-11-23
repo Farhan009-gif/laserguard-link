@@ -6,6 +6,8 @@
     <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
     <!-- Required by WifiNetworkSpecifier on API 29-32 to request the board's AP. -->
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+    <!-- API 33+ alternative to location for WifiNetworkSpecifier. -->
+    <uses-permission android:name="android.permission.NEARBY_WIFI_DEVICES" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 
     <application
