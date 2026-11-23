@@ -374,7 +374,7 @@ class MainActivity : ComponentActivity() {
                                     val v = prefs.getLong("voiceVersion", 0) + 1
                                     prefs.edit().putLong("voiceVersion", v).apply()
                                     val url = URLEncoder.encode(
-                                        "${BoardLink.PHONE_BASE}/voice.wav", "UTF-8")
+                                        "http://${phoneIp ?: "192.168.4.2"}:8080/voice.wav", "UTF-8")
                                     val r = link.call("/voice?url=$url&v=$v")
                                     message = if (r?.code == 200)
                                         "Voice sent — the board is downloading it now."
