@@ -238,8 +238,9 @@ class MainActivity : ComponentActivity() {
                     Text(
                         if (bound) "All board traffic is pinned to the board's Wi-Fi. " +
                             "Mobile data can stay on."
-                        else "Android will ask you to approve joining the board's Wi-Fi. " +
-                            "That approval is what lets the app reach 192.168.4.1.",
+                        else "If this phone is already on the LaserGuard-Board Wi-Fi, " +
+                            "Connect uses it straight away. Otherwise Android asks you " +
+                            "to approve joining it.",
                         color = Muted, style = MaterialTheme.typography.bodySmall)
                     linkError?.let {
                         Text(it, color = AlarmRed, style = MaterialTheme.typography.bodySmall)

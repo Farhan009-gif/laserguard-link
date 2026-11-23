@@ -59,11 +59,43 @@ class BoardLink(context: Context) {
     private val cm = context.getSystemService(ConnectivityManager::class.java)
     private var network: Network? = null
     private var callback: ConnectivityManager.NetworkCallback? = null
+    /** True when [network] is the system Wi-Fi the phone already joined
+     *  (via Settings) rather than our own specifier request. */
+    private var systemMode = false
+
+    /**
+     * The board's network among the phone's current networks, if any:
+     * a Wi-Fi network where this phone holds a 192.168.4.x address.
+     * When the phone is already on LaserGuard-Board through system
+     * Wi-Fi, Android never shows the specifier join dialog (proven on
+     * the real phone) — so Connect must adopt this network instead.
+     */
+    private fun findBoardNetwork(): Network? = try {
+        cm.allNetworks.firstOrNull { n ->
+            val caps = cm.getNetworkCapabilities(n)
+            val lp = cm.getLinkProperties(n)
+            caps?.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) == true &&
+                lp?.linkAddresses?.any {
+                    (it.address.hostAddress ?: "").startsWith("192.168.4.")
+                } == true
+        }
+    } catch (e: Exception) {
+        null
+    }
 
     /** Ask Android to join the board's AP and pin our traffic to it. */
     fun connect() {
-        if (callback != null) return
         error.value = null
+        // Already on the board's Wi-Fi via system Settings? Adopt that
+        // network — no join dialog exists in that state.
+        findBoardNetwork()?.let { n ->
+            network = n
+            systemMode = true
+            bound.value = true
+            phoneIp.value = localIp(n)
+            return
+        }
+        if (callback != null) return
         val specifier = WifiNetworkSpecifier.Builder()
             .setSsid(AP_SSID)
             .setWpa2Passphrase(AP_PASSWORD)
@@ -114,6 +146,7 @@ class BoardLink(context: Context) {
         callback?.let { runCatching { cm.unregisterNetworkCallback(it) } }
         callback = null
         network = null
+        systemMode = false
         bound.value = false
         status.value = null
         phoneIp.value = null
@@ -151,7 +184,17 @@ class BoardLink(context: Context) {
     /** Poll GET / and update [status]. Returns true if the board answered. */
     suspend fun refreshStatus(): Boolean {
         network?.let { phoneIp.value = localIp(it) }
-        val r = call("/") ?: return false
+        val r = call("/")
+        if (r == null) {
+            // In system mode, follow the phone if it leaves/rejoins
+            // the board's Wi-Fi; a silent board alone never drops us.
+            if (systemMode) {
+                val n = findBoardNetwork()
+                if (n == null) disconnect()
+                else if (n != network) { network = n; phoneIp.value = localIp(n) }
+            }
+            return false
+        }
         if (r.code != 200) return false
         return try {
             val j = JSONObject(r.body)
